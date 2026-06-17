@@ -129,4 +129,6 @@ Challenge: Carbon Footprint Awareness Platform
 
 ---
 
+**NOTE : "Deployed on Render free tier — first load may take 30 seconds to wake up."**
+
 *Made with 🌱 by Mohammed Jaffer*
