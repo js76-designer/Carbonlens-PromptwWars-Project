@@ -1,0 +1,185 @@
+/* ─────────────────────────────────────────
+   components.css — Toast, Modal, Badge, Gauge, etc.
+───────────────────────────────────────── */
+
+/* ── Badge ── */
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  background: var(--forest);
+  color: var(--white);
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 360px;
+  animation: slideUp 0.3s ease;
+}
+.toast.success { background: var(--forest); }
+.toast.error   { background: #B91C1C; }
+.toast.info    { background: #1E4D7C; }
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13,59,46,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+.modal-box {
+  background: var(--white);
+  border-radius: 20px;
+  padding: 32px 36px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  animation: fadeIn 0.25s ease;
+}
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--forest);
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-size: 13px;
+  color: var(--mist);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+.btn-cancel {
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--slate);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cancel:hover { border-color: var(--sage); }
+.btn-confirm {
+  padding: 10px 22px;
+  border-radius: 10px;
+  background: var(--forest);
+  color: var(--white);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-confirm:hover { background: var(--moss); }
+.btn-confirm.danger { background: var(--alert); }
+.btn-confirm.danger:hover { background: #8B2A14; }
+
+/* ── Gauge SVG ── */
+.gauge-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.gauge-inner { position: absolute; text-align: center; }
+.gauge-number {
+  font-family: 'Syne', sans-serif;
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--forest);
+  line-height: 1;
+}
+.gauge-unit { font-size: 12px; color: var(--mist); margin-top: 4px; }
+.gauge-label-text {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-top: 6px;
+}
+
+/* ── Result card internals ── */
+.result-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--sage);
+  margin-bottom: 24px;
+}
+.result-badge-wrap { margin-bottom: 16px; }
+.result-desc {
+  font-size: 14px;
+  color: var(--slate);
+  line-height: 1.65;
+  margin-bottom: 24px;
+}
+.result-tip {
+  background: var(--foam);
+  border-radius: 14px;
+  padding: 18px 20px;
+  text-align: left;
+  margin-bottom: 28px;
+  border: 1px solid var(--mint);
+}
+.result-tip-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fern);
+  margin-bottom: 7px;
+}
+.result-tip-text {
+  font-size: 14px;
+  color: var(--forest);
+  line-height: 1.6;
+}
+
+/* ── Divider ── */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
+}
+
+/* ── Summary pill ── */
+.summary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--foam);
+  border: 1px solid var(--mint);
+  border-radius: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--forest);
+}

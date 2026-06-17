@@ -1,0 +1,7 @@
+node_modules/
+coverage/
+carbonlens-data.json
+.env
+npm-debug.log*
+*.log
+.DS_Store

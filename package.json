@@ -1,0 +1,41 @@
+{
+  "name": "carbonlens",
+  "version": "2.0.0",
+  "description": "Personal carbon footprint tracker",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "nodemon server/index.js",
+    "test": "jest --runInBand --forceExit",
+    "test:verbose": "jest --runInBand --forceExit --verbose",
+    "test:coverage": "jest --runInBand --forceExit --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "testTimeout": 15000,
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "server/app.js"
+    ]
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.5.1",
+    "express-session": "^1.17.3",
+    "helmet": "^7.2.0",
+    "uuid": "^11.0.0",
+    "xss": "^1.0.15"
+  },
+  "devDependencies": {
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "nodemon": "^3.0.1",
+    "supertest": "^7.0.0"
+  }
+}

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="CarbonLens — Track, understand and reduce your personal carbon footprint" />
+  <meta name="theme-color" content="#0D3B2E" />
+  <title>CarbonLens — Carbon Footprint Tracker</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/auth.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+
+  <style>
+    /* ── Accessibility improvements ── */
+    :focus-visible {
+      outline: 2px solid var(--sage);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); border: 0;
+    }
+    /* ── Chart container ── */
+    .chart-container {
+      position: relative;
+      height: 200px;
+      width: 100%;
+    }
+    /* ── AI tips box ── */
+    #ai-tips-box {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 1px solid var(--mint);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-bottom: 16px;
+      min-height: 80px;
+    }
+    /* ── Password strength ── */
+    .pwd-strength {
+      height: 4px;
+      border-radius: 4px;
+      margin-top: 6px;
+      transition: all 0.3s;
+      background: var(--border);
+    }
+    .pwd-strength.weak   { background: #EF4444; width: 33%; }
+    .pwd-strength.medium { background: #F59E0B; width: 66%; }
+    .pwd-strength.strong { background: #10B981; width: 100%; }
+    .pwd-hint { font-size: 11px; color: var(--mist); margin-top: 4px; }
+    /* ── Loading overlay ── */
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(255,255,255,0.85);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; flex-direction: column; gap: 12px;
+    }
+    .loading-overlay p { font-size: 14px; color: var(--slate); }
+    /* ── Mobile nav (bottom bar for small screens) ── */
+    @media (max-width: 860px) {
+      .mobile-nav {
+        display: flex !important;
+        position: fixed; bottom: 0; left: 0; right: 0;
+        background: var(--white); border-top: 1px solid var(--border);
+        z-index: 50; padding: 8px 0 12px;
+      }
+      .mobile-nav-btn {
+        flex: 1; display: flex; flex-direction: column;
+        align-items: center; gap: 3px; border: none;
+        background: transparent; cursor: pointer;
+        font-size: 10px; color: var(--mist); font-family: inherit;
+      }
+      .mobile-nav-btn.active { color: var(--fern); font-weight: 700; }
+      .mobile-nav-icon { font-size: 20px; }
+      .main-body { padding-bottom: 80px !important; }
+    }
+    .mobile-nav { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── SKIP TO CONTENT (Accessibility) ── -->
+<a href="#main-body" class="sr-only" style="position:absolute;top:0;left:0;padding:8px 16px;background:var(--forest);color:white;z-index:9999;border-radius:0 0 8px 0">
+  Skip to main content
+</a>
+
+<!-- ── LOGIN ── -->
+<div id="screen-login" class="screen" role="main" aria-label="Login page">
+  <div class="auth-wrap">
+    <div class="auth-panel" aria-hidden="true">
+      <div class="auth-brand"><div class="auth-brand-icon">🌿</div><span class="auth-brand-name">CarbonLens</span></div>
+      <h1 class="auth-headline">Track what you <span>emit</span>.<br/>Act on what matters.</h1>
+      <p class="auth-subline">Personal carbon tracking with ranked, personalised actions tailored to your lifestyle.</p>
+      <div class="auth-stats">
+        <div><div class="auth-stat-val">2.1×</div><div class="auth-stat-lbl">avg reduction in 30 days</div></div>
+        <div><div class="auth-stat-val">420 kg</div><div class="auth-stat-lbl">top single action saving</div></div>
+      </div>
+    </div>
+    <div class="auth-form-panel">
+      <h2 class="auth-form-title">Welcome back</h2>
+      <p class="auth-form-sub">Sign in to your CarbonLens account</p>
+      <div id="login-error" class="auth-error hidden" role="alert" aria-live="polite"></div>
+      <div class="form-group">
+        <label class="form-label" for="login-email">Email address</label>
+        <input id="login-email" class="form-input" type="email" placeholder="you@example.com"
+          autocomplete="email" aria-required="true" aria-describedby="login-error"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="login-pass">Password</label>
+        <input id="login-pass" class="form-input" type="password" placeholder="••••••••"
+          autocomplete="current-password" aria-required="true"/>
+      </div>
+      <button class="btn-primary" id="btn-login" aria-label="Sign in to your account">Sign in</button>
+      <p class="auth-switch">Don't have an account? <a id="go-register" role="button" tabindex="0">Create one free</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── REGISTER ── -->
+<div id="screen-register" class="screen hidden" role="main" aria-label="Register page">
+  <div class="auth-wrap">
+    <div class="auth-panel" aria-hidden="true">
+      <div class="auth-brand"><div class="auth-brand-icon">🌿</div><span class="auth-brand-name">CarbonLens</span></div>
+      <h1 class="auth-headline">Know your <span>impact</span>.<br/>Shrink it together.</h1>
+      <p class="auth-subline">Join thousands measuring and reducing their personal carbon footprint.</p>
+    </div>
+    <div class="auth-form-panel">
+      <h2 class="auth-form-title">Create your account</h2>
+      <p class="auth-form-sub">Free forever — no credit card needed</p>
+      <div id="register-error" class="auth-error hidden" role="alert" aria-live="polite"></div>
+      <div class="form-group">
+        <label class="form-label" for="reg-name">Full name</label>
+        <input id="reg-name" class="form-input" placeholder="Your name"
+          autocomplete="name" aria-required="true"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="reg-email">Email address</label>
+        <input id="reg-email" class="form-input" type="email" placeholder="you@example.com"
+          autocomplete="email" aria-required="true"/>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="reg-pass">Password</label>
+        <input id="reg-pass" class="form-input" type="password" placeholder="At least 6 characters"
+          autocomplete="new-password" aria-required="true" aria-describedby="pwd-hint"/>
+        <div class="pwd-strength" id="pwd-strength" aria-hidden="true"></div>
+        <div class="pwd-hint" id="pwd-hint">Use at least 6 characters</div>
+      </div>
+      <button class="btn-primary" id="btn-register" aria-label="Create your free account">Create account</button>
+      <p class="auth-switch">Already have an account? <a id="go-login" role="button" tabindex="0">Sign in</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ── QUIZ ── -->
+<div id="screen-quiz" class="screen hidden" role="main" aria-label="Carbon footprint quiz">
+  <div class="quiz-wrap">
+    <div class="quiz-card" id="quiz-card" role="form" aria-label="Footprint assessment quiz"></div>
+  </div>
+</div>
+
+<!-- ── RESULT ── -->
+<div id="screen-result" class="screen hidden" role="main" aria-label="Your footprint result">
+  <div class="result-wrap">
+    <div class="result-card" id="result-card"></div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="screen-app" class="screen hidden">
+  <div class="app-shell">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
+      <div class="sidebar-brand" aria-label="CarbonLens">
+        <div class="sidebar-brand-icon" aria-hidden="true">🌿</div>
+        <span class="sidebar-brand-name">CarbonLens</span>
+      </div>
+      <nav class="sidebar-nav" role="menu">
+        <div class="nav-section-label" id="nav-overview">Overview</div>
+        <button class="nav-item active" data-screen="dashboard"
+          role="menuitem" aria-labelledby="nav-overview" aria-current="page">
+          <span class="nav-icon" aria-hidden="true">◈</span> Dashboard
+        </button>
+        <div class="nav-section-label" id="nav-track">Track</div>
+        <button class="nav-item" data-screen="log" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">＋</span> Log Activity
+        </button>
+        <button class="nav-item" data-screen="history" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">☰</span> History
+        </button>
+        <div class="nav-section-label" id="nav-reduce">Reduce</div>
+        <button class="nav-item" data-screen="insights" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">◎</span> Insights
+        </button>
+        <div class="nav-section-label" id="nav-account">Account</div>
+        <button class="nav-item" data-screen="settings" role="menuitem">
+          <span class="nav-icon" aria-hidden="true">⚙</span> Settings
+        </button>
+      </nav>
+      <div class="sidebar-user">
+        <div class="sidebar-user-info" aria-label="Logged in user">
+          <div class="sidebar-avatar" id="sidebar-avatar" aria-hidden="true">U</div>
+          <div>
+            <div class="sidebar-username" id="sidebar-username">User</div>
+            <div class="sidebar-email" id="sidebar-email">user@email.com</div>
+          </div>
+        </div>
+        <button class="logout-btn" id="btn-logout" aria-label="Sign out of CarbonLens">
+          ⇤ Sign out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="main" role="main">
+      <header class="main-header">
+        <div>
+          <h1 class="main-title" id="main-title">Dashboard</h1>
+          <div class="main-subtitle" id="main-subtitle" aria-live="polite">Loading…</div>
+        </div>
+        <div class="header-right">
+          <span class="header-date" id="header-date" aria-label="Today's date"></span>
+        </div>
+      </header>
+      <div class="main-body" id="main-body" aria-live="polite" tabindex="-1"></div>
+    </div>
+  </div>
+
+  <!-- Mobile bottom nav -->
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-nav-btn active" data-screen="dashboard">
+      <span class="mobile-nav-icon" aria-hidden="true">◈</span>Home
+    </button>
+    <button class="mobile-nav-btn" data-screen="log">
+      <span class="mobile-nav-icon" aria-hidden="true">＋</span>Log
+    </button>
+    <button class="mobile-nav-btn" data-screen="history">
+      <span class="mobile-nav-icon" aria-hidden="true">☰</span>History
+    </button>
+    <button class="mobile-nav-btn" data-screen="insights">
+      <span class="mobile-nav-icon" aria-hidden="true">◎</span>Insights
+    </button>
+    <button class="mobile-nav-btn" data-screen="settings">
+      <span class="mobile-nav-icon" aria-hidden="true">⚙</span>Settings
+    </button>
+  </nav>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- ── MODAL ── -->
+<div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<!-- Scripts -->
+<script src="/js/api.js"></script>
+<script src="/js/data.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/screens.js"></script>
+<script src="/js/app.js"></script>
+
+<script>
+// Password strength indicator
+document.addEventListener("DOMContentLoaded", () => {
+  const passInput = document.getElementById("reg-pass");
+  const bar       = document.getElementById("pwd-strength");
+  const hint      = document.getElementById("pwd-hint");
+  if (!passInput) return;
+  passInput.addEventListener("input", () => {
+    const v = passInput.value;
+    bar.className = "pwd-strength";
+    if (v.length === 0) { hint.textContent = "Use at least 6 characters"; return; }
+    if (v.length < 6)   { bar.classList.add("weak");   hint.textContent = "Too short"; return; }
+    if (v.length < 10 || !/[^a-zA-Z0-9]/.test(v)) {
+      bar.classList.add("medium"); hint.textContent = "Good — add symbols for stronger";
+    } else {
+      bar.classList.add("strong"); hint.textContent = "Strong password ✓";
+    }
+  });
+
+  // Mobile nav
+  document.querySelectorAll(".mobile-nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".mobile-nav-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const s = btn.dataset.screen;
+      if      (s === "dashboard") renderDashboard();
+      else if (s === "log")       renderLog();
+      else if (s === "history")   renderHistory();
+      else if (s === "insights")  renderInsights();
+      else if (s === "settings")  renderSettings();
+    });
+  });
+});
+</script>
+</body>
+</html>
