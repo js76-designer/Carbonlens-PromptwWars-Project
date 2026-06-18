@@ -1,5 +1,13 @@
 // ─────────────────────────────────────────────────────────────
 //  server/app.js  —  Express app (no listen) — importable for tests
+//
+//  Security posture:
+//   - All passwords hashed with bcrypt (cost factor 12)
+//   - All user input sanitized via xss() before storage
+//   - Session cookies are httpOnly + sameSite=lax
+//   - CORS restricted to an explicit allow-list (see ALLOWED_ORIGINS)
+//   - Rate limiting on /api/auth (10/15min) and /api (100/min)
+//   - Helmet sets standard hardening headers (CSP, HSTS, etc.)
 // ─────────────────────────────────────────────────────────────
 
 const express        = require("express");
@@ -22,6 +30,11 @@ let _cache     = null;
 let _cacheTime = 0;
 const CACHE_TTL = 2000;
 
+/**
+ * Loads the JSON "database" from disk, using a short-lived in-memory
+ * cache to avoid a disk read on every single request.
+ * @returns {{users: object, logs: object, pledges: object}}
+ */
 function loadDB() {
   const now = Date.now();
   if (_cache && (now - _cacheTime) < CACHE_TTL) return _cache;
@@ -47,6 +60,10 @@ function loadDB() {
 // write does not meaningfully block the event loop. The in-memory
 // cache above (_cache / CACHE_TTL) is what actually protects
 // request throughput — most reads never touch the disk at all.
+/**
+ * Persists the given database object to disk and refreshes the cache.
+ * @param {object} data - full database object to persist
+ */
 function saveDB(data) {
   _cache = data;
   _cacheTime = Date.now();
@@ -71,9 +88,22 @@ app.use(helmet({
       styleSrc:   ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc:    ["'self'", "https://fonts.gstatic.com"],
       imgSrc:     ["'self'", "data:"],
-      connectSrc: ["'self'"],
+      // connect-src must include the same CDNs as script-src — browsers
+      // fetch .map source-map files and other sub-resources from these
+      // origins as part of loading the script, and that counts as a
+      // "connect" under CSP, not a "script" load.
+      connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
     },
   },
+  // Force HTTPS on every future visit for 1 year, including subdomains.
+  // No-op on plain http://localhost, active once deployed behind HTTPS.
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  // Prevent the app from ever being framed (defense-in-depth on top of CSP).
+  frameguard: { action: "deny" },
+  // Block browsers from MIME-sniffing responses away from declared Content-Type.
+  noSniff: true,
+  // Don't leak the full referrer URL to third parties.
+  referrerPolicy: { policy: "same-origin" },
 }));
 
 // Relax rate limits in test environment
@@ -92,7 +122,35 @@ const apiLimiter = rateLimit({
 
 app.use("/api/auth", authLimiter);
 app.use("/api",      apiLimiter);
-app.use(cors({ origin: true, credentials: true }));
+// SECURITY: Restrict CORS to an explicit allow-list rather than
+// reflecting every request origin. `origin: true` with
+// `credentials: true` effectively disables the same-origin
+// protection CORS is meant to provide, since it echoes back
+// whatever Origin header the caller sends. In production, only
+// requests from this app's own deployed origin (and localhost
+// during development) are permitted to send/receive cookies.
+const ALLOWED_ORIGINS = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  process.env.APP_ORIGIN, // set this to your Render URL in production
+].filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    // Same-origin requests (no Origin header, e.g. curl, server-to-server)
+    // and explicitly allow-listed origins are accepted.
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
+// PaaS providers like Render terminate HTTPS at a reverse proxy —
+// without this, Express sees every request as plain HTTP, which
+// breaks the `secure` cookie flag below in production.
+app.set("trust proxy", 1);
+
 app.use(express.json({ limit: "10kb" }));
 app.use(express.static(path.join(__dirname, "../public")));
 app.use(session({
@@ -100,7 +158,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, httpOnly: true, sameSite: "lax",
+    // true only when actually deployed over HTTPS; false locally so
+    // login still works over plain http://localhost in development.
+    secure: process.env.NODE_ENV === "production",
+    httpOnly: true,
+    sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 }));
@@ -134,47 +196,65 @@ function todayLabel() {
 //  AUTH
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * POST /api/auth/register
+ * Creates a new user account. Body: { name, email, password }.
+ */
 app.post("/api/auth/register", async (req, res) => {
-  const name     = sanitize(req.body.name     || "");
-  const email    = sanitize(req.body.email    || "").toLowerCase();
-  const password =          req.body.password || "";
-  if (!name || !email || !password)
-    return res.status(400).json({ error: "All fields are required." });
-  if (!isValidEmail(email))
-    return res.status(400).json({ error: "Please enter a valid email address." });
-  if (password.length < 6)
-    return res.status(400).json({ error: "Password must be at least 6 characters." });
-  if (name.length > 100)
-    return res.status(400).json({ error: "Name is too long." });
-  DB = loadDB();
-  if (DB.users[email])
-    return res.status(409).json({ error: "An account with this email already exists." });
-  const passwordHash = await bcrypt.hash(password, 12);
-  const id = uuidv4();
-  DB.users[email] = {
-    id, name, email, passwordHash,
-    annual: 0, quizDone: false,
-    createdAt: new Date().toISOString(),
-  };
-  DB.logs[id]    = [];
-  DB.pledges[id] = [];
-  saveDB(DB);
-  req.session.userId = id;
-  res.json({ ok: true, user: safeUser(DB.users[email]) });
+  try {
+    const name     = sanitize(req.body.name     || "");
+    const email    = sanitize(req.body.email    || "").toLowerCase();
+    const password =          req.body.password || "";
+    if (!name || !email || !password)
+      return res.status(400).json({ error: "All fields are required." });
+    if (!isValidEmail(email))
+      return res.status(400).json({ error: "Please enter a valid email address." });
+    if (password.length < 6)
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    if (name.length > 100)
+      return res.status(400).json({ error: "Name is too long." });
+    DB = loadDB();
+    if (DB.users[email])
+      return res.status(409).json({ error: "An account with this email already exists." });
+    const passwordHash = await bcrypt.hash(password, 12);
+    const id = uuidv4();
+    DB.users[email] = {
+      id, name, email, passwordHash,
+      annual: 0, quizDone: false,
+      createdAt: new Date().toISOString(),
+    };
+    DB.logs[id]    = [];
+    DB.pledges[id] = [];
+    saveDB(DB);
+    req.session.userId = id;
+    res.json({ ok: true, user: safeUser(DB.users[email]) });
+  } catch (err) {
+    console.error("Register error:", err.message);
+    res.status(500).json({ error: "Could not create account. Please try again." });
+  }
 });
 
+/**
+ * POST /api/auth/login
+ * Authenticates a user. Body: { email, password }.
+ */
 app.post("/api/auth/login", async (req, res) => {
-  const email    = sanitize(req.body.email    || "").toLowerCase();
-  const password =          req.body.password || "";
-  if (!email || !password)
-    return res.status(400).json({ error: "Email and password are required." });
-  DB = loadDB();
-  const user = DB.users[email];
-  if (!user) return res.status(401).json({ error: "Invalid email or password." });
-  const ok = await bcrypt.compare(password, user.passwordHash);
-  if (!ok)  return res.status(401).json({ error: "Invalid email or password." });
-  req.session.userId = user.id;
-  res.json({ ok: true, user: safeUser(user) });
+  try {
+    const email    = sanitize(req.body.email    || "").toLowerCase();
+    const password =          req.body.password || "";
+    if (!email || !password)
+      return res.status(400).json({ error: "Email and password are required." });
+    DB = loadDB();
+    const user = DB.users[email];
+    if (!user) return res.status(401).json({ error: "Invalid email or password." });
+    const ok = await bcrypt.compare(password, user.passwordHash);
+    if (!ok)  return res.status(401).json({ error: "Invalid email or password." });
+    req.session.userId = user.id;
+    res.json({ ok: true, user: safeUser(user) });
+  } catch (err) {
+    console.error("Login error:", err.message);
+    res.status(500).json({ error: "Could not sign in. Please try again." });
+  }
 });
 
 app.post("/api/auth/logout", (req, res) => {
