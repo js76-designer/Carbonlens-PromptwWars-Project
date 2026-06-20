@@ -509,6 +509,12 @@ app.get("*", (req, res) => {
 
 // ── Global error handler ───────────────────────────────────────
 app.use((err, req, res, next) => {
+  // CORS rejections are an expected, deliberate security control —
+  // not a server bug — so they get their own clean 403 response
+  // instead of falling through to the generic 500 handler below.
+  if (err && err.message === "Not allowed by CORS") {
+    return res.status(403).json({ error: "This origin is not permitted to access the API." });
+  }
   console.error("Unhandled error:", err.message);
   res.status(500).json({ error: "Internal server error." });
 });

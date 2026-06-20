@@ -494,6 +494,43 @@ describe("Security", () => {
     const res = await agent2.put(`/api/logs/${logId}`).send({ kg: 999, qty: 1 });
     expect(res.status).toBe(404); // Not found in user 2's scope
   });
+
+  test("requests from a disallowed origin are rejected with 403, not 500", async () => {
+    const res = await request(app)
+      .get("/api/health")
+      .set("Origin", "https://evil-attacker.example.com");
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/not permitted/i);
+  });
+
+  test("requests with no Origin header (server-to-server) are allowed through", async () => {
+    // supertest does not send an Origin header by default, simulating
+    // a same-origin / non-browser request — this must NOT be blocked.
+    const res = await request(app).get("/api/health");
+    expect(res.status).toBe(200);
+  });
+
+  test("requests from an allow-listed origin succeed", async () => {
+    const res = await request(app)
+      .get("/api/health")
+      .set("Origin", "http://localhost:3000");
+    expect(res.status).toBe(200);
+  });
+
+  test("HSTS header is present, forcing HTTPS on future visits", async () => {
+    const res = await request(app).get("/api/health");
+    expect(res.headers["strict-transport-security"]).toBeDefined();
+    expect(res.headers["strict-transport-security"]).toContain("max-age=");
+  });
+
+  test("rate-limit headers are present and decrement across requests", async () => {
+    const first  = await request(app).get("/api/health");
+    const second = await request(app).get("/api/health");
+    const firstRemaining  = Number(first.headers["x-ratelimit-remaining"]);
+    const secondRemaining = Number(second.headers["x-ratelimit-remaining"]);
+    expect(first.headers["x-ratelimit-limit"]).toBeDefined();
+    expect(secondRemaining).toBeLessThan(firstRemaining);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════
