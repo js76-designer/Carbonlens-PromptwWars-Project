@@ -173,6 +173,20 @@ function sanitize(str) {
   return xss(str.trim());
 }
 function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+/**
+ * Validates a log entry's quantity and CO₂ values, shared by both
+ * POST /api/logs and PUT /api/logs/:id so the two routes can never
+ * silently drift apart on what counts as a valid entry.
+ * @param {number} qty - Quantity in the category's native unit
+ * @param {number} kg  - CO₂ value in kg
+ * @returns {string|null} An error message if invalid, otherwise null
+ */
+function validateLogValues(qty, kg) {
+  if (isNaN(qty) || qty <= 0) return "Invalid quantity.";
+  if (isNaN(kg)  || kg  <  0) return "Invalid CO2 value.";
+  return null;
+}
 function requireAuth(req, res, next) {
   if (!req.session.userId)
     return res.status(401).json({ error: "Not authenticated" });
@@ -358,8 +372,8 @@ app.post("/api/logs", requireAuth, (req, res) => {
   const validCats = ["travel", "food", "energy", "goods"];
   if (!validCats.includes(cat)) return res.status(400).json({ error: "Invalid category." });
   if (!item)                    return res.status(400).json({ error: "Activity is required." });
-  if (isNaN(qty) || qty <= 0)   return res.status(400).json({ error: "Invalid quantity." });
-  if (isNaN(kg)  || kg  <  0)   return res.status(400).json({ error: "Invalid CO2 value." });
+  const validationError = validateLogValues(qty, kg);
+  if (validationError) return res.status(400).json({ error: validationError });
   DB = loadDB();
   const uid = req.session.userId;
   if (!DB.logs[uid]) DB.logs[uid] = [];
@@ -390,8 +404,8 @@ app.put("/api/logs/:id", requireAuth, (req, res) => {
   const note = req.body.note != null ? sanitize(req.body.note) : logs[idx].note;
   const qty  = req.body.qty  != null ? Number(req.body.qty)    : logs[idx].qty;
   const kg   = req.body.kg   != null ? Number(req.body.kg)     : logs[idx].kg;
-  if (isNaN(qty) || qty <= 0) return res.status(400).json({ error: "Invalid quantity." });
-  if (isNaN(kg)  || kg  <  0) return res.status(400).json({ error: "Invalid CO2 value." });
+  const validationError = validateLogValues(qty, kg);
+  if (validationError) return res.status(400).json({ error: validationError });
   DB.logs[uid][idx] = {
     ...logs[idx], item, qty, kg,
     note: note.substring(0, 500),
