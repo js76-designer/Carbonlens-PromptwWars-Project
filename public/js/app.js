@@ -185,3 +185,32 @@ function bootApp() {
     // Server unreachable — stay on login
   }
 })();
+
+// ── updateSidebarUser — refresh sidebar after profile edit ────
+/**
+ * Updates the sidebar avatar, username, and email display
+ * with the currently authenticated user's details.
+ * @param {{ name: string, email: string }} user
+ */
+function updateSidebarUser(user) {
+  document.getElementById("sidebar-username").textContent = user.name  || "User";
+  document.getElementById("sidebar-email").textContent    = user.email || "";
+  document.getElementById("sidebar-avatar").textContent   =
+    (user.name || "U").charAt(0).toUpperCase();
+}
+
+// ── doLogout — shared logout used by Settings screen ─────────
+/**
+ * Signs the current user out by calling POST /api/auth/logout,
+ * clears in-memory AppState, and returns to the login screen.
+ */
+async function doLogout() {
+  try { await API.logout(); } catch (_) {}
+  AppState.user    = null;
+  AppState.logs    = [];
+  AppState.pledges = [];
+  document.getElementById("login-email").value = "";
+  document.getElementById("login-pass").value  = "";
+  document.getElementById("login-error").classList.add("hidden");
+  showScreen("login");
+}

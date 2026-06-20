@@ -2,8 +2,25 @@
 //  api.js — All HTTP calls to the backend
 // ─────────────────────────────────────────
 
+/**
+ * API — centralised HTTP client for all backend calls.
+ *
+ * Every method returns a Promise that resolves to the parsed JSON
+ * response body, or rejects with an Error whose message is the
+ * server-supplied error string (or "Request failed" as fallback).
+ *
+ * Credentials (session cookies) are included on every request so
+ * the server-side requireAuth middleware can identify the caller.
+ */
 const API = (() => {
 
+  /**
+   * Core fetch wrapper used by all public methods.
+   * @param {string} method - HTTP verb (GET, POST, PUT, DELETE)
+   * @param {string} url    - Absolute path, e.g. "/api/logs"
+   * @param {object} [body] - Optional request body (will be JSON-encoded)
+   * @returns {Promise<object>} Parsed JSON response
+   */
   async function req(method, url, body) {
     const opts = {
       method,

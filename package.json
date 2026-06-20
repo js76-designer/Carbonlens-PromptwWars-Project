@@ -1,14 +1,15 @@
 {
   "name": "carbonlens",
   "version": "2.0.0",
-  "description": "Personal carbon footprint tracker",
+  "description": "A full-stack carbon footprint tracking web app with AI-powered personalised insights, secure authentication, and activity logging.",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
     "dev": "nodemon server/index.js",
     "test": "jest --runInBand --forceExit",
     "test:verbose": "jest --runInBand --forceExit --verbose",
-    "test:coverage": "jest --runInBand --forceExit --coverage"
+    "test:coverage": "jest --runInBand --forceExit --coverage",
+    "test:ci": "jest --runInBand --forceExit --coverage"
   },
   "jest": {
     "testEnvironment": "node",
@@ -37,5 +38,8 @@
     "jest-environment-jsdom": "^30.4.1",
     "nodemon": "^3.0.1",
     "supertest": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

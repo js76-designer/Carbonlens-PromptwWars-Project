@@ -29,12 +29,22 @@ const QUIZ_QUESTIONS = [
 ];
 
 // Compute annual footprint from quiz score array
+/**
+ * Calculates the estimated annual CO₂ footprint from quiz scores.
+ * @param {number[]} scores - Array of per-question scores (0-3 each)
+ * @returns {number} Annual footprint in kg CO₂
+ */
 function calcAnnual(scores) {
   const total = scores.reduce((a,b) => a+b, 0);
   return 2200 + total * 950;
 }
 
 // Rating from annual kg
+/**
+ * Returns a display rating label and colour for a given annual footprint.
+ * @param {number} kg - Annual footprint in kg CO₂
+ * @returns {{ label: string, color: string, bg: string }}
+ */
 function getRating(kg) {
   if (kg < 3000) return { label:"Low impact",  color:"#52B788", bg:"#D8F3DC" };
   if (kg < 7000) return { label:"Average",     color:"#D4712A", bg:"#FEF3C7" };
@@ -42,20 +52,41 @@ function getRating(kg) {
 }
 
 // Get category object by id
+/**
+ * Looks up a category object by its ID string.
+ * @param {string} id - Category ID: "travel" | "food" | "energy" | "goods"
+ * @returns {object|undefined}
+ */
 function getCat(id) { return CATEGORIES.find(c => c.id === id); }
 
 // Compute estimated CO2 from qty and category
+/**
+ * Estimates CO₂ emissions for a given category and quantity.
+ * @param {string} catId - Category ID
+ * @param {number} qty   - Quantity in the category's native unit
+ * @returns {number} Estimated kg CO₂ (rounded to nearest integer)
+ */
 function estimateCO2(catId, qty) {
   const cat = getCat(catId);
   return cat ? Math.round(qty * cat.kgPer) : 0;
 }
 
 // Date label
+/**
+ * Returns today's date formatted as a human-readable string,
+ * e.g. "18 Jun 2026". Used as the log entry date key.
+ * @returns {string}
+ */
 function todayLabel() {
   return new Date().toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" });
 }
 
 // Format date nicely
+/**
+ * Formats an ISO 8601 timestamp into a localised display string.
+ * @param {string} isoString - ISO date string, e.g. "2026-06-18T10:30:00.000Z"
+ * @returns {string} Localised date + time string
+ */
 function fmtDate(isoString) {
   return new Date(isoString).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
 }

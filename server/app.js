@@ -257,11 +257,19 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/auth/logout
+ * Destroys the current session and clears the session cookie.
+ */
 app.post("/api/auth/logout", (req, res) => {
   req.session.destroy(() => {});
   res.json({ ok: true });
 });
 
+/**
+ * GET /api/auth/me
+ * Returns the currently authenticated user, or null if not logged in.
+ */
 app.get("/api/auth/me", (req, res) => {
   if (!req.session.userId) return res.json({ user: null });
   DB = loadDB();
@@ -272,6 +280,10 @@ app.get("/api/auth/me", (req, res) => {
 //  USER
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * PUT /api/user/profile
+ * Updates the authenticated user's display name. Body: { name }.
+ */
 app.put("/api/user/profile", requireAuth, (req, res) => {
   DB = loadDB();
   const user = getUserById(req.session.userId);
@@ -285,6 +297,11 @@ app.put("/api/user/profile", requireAuth, (req, res) => {
   res.json({ ok: true, user: safeUser(DB.users[user.email]) });
 });
 
+/**
+ * PUT /api/user/footprint
+ * Saves or updates the user's annual CO₂ footprint estimate.
+ * Body: { annual } — value in kg, max 200 000.
+ */
 app.put("/api/user/footprint", requireAuth, (req, res) => {
   DB = loadDB();
   const user   = getUserById(req.session.userId);
@@ -298,6 +315,11 @@ app.put("/api/user/footprint", requireAuth, (req, res) => {
   res.json({ ok: true, user: safeUser(DB.users[user.email]) });
 });
 
+/**
+ * PUT /api/user/retakequiz
+ * Resets the user's quizDone flag and annual estimate so they can
+ * retake the onboarding quiz.
+ */
 app.put("/api/user/retakequiz", requireAuth, (req, res) => {
   DB = loadDB();
   const user = getUserById(req.session.userId);
@@ -312,11 +334,21 @@ app.put("/api/user/retakequiz", requireAuth, (req, res) => {
 //  LOGS
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * GET /api/logs
+ * Returns all activity log entries for the authenticated user,
+ * ordered newest-first.
+ */
 app.get("/api/logs", requireAuth, (req, res) => {
   DB = loadDB();
   res.json({ logs: DB.logs[req.session.userId] || [] });
 });
 
+/**
+ * POST /api/logs
+ * Adds a new activity log entry. Body: { cat, item, qty, kg, note }.
+ * Category must be one of: travel | food | energy | goods.
+ */
 app.post("/api/logs", requireAuth, (req, res) => {
   const cat  = sanitize(req.body.cat  || "");
   const item = sanitize(req.body.item || "");
@@ -343,6 +375,11 @@ app.post("/api/logs", requireAuth, (req, res) => {
   res.json({ ok: true, entry });
 });
 
+/**
+ * PUT /api/logs/:id
+ * Edits an existing log entry. Body: any subset of { item, qty, kg, note }.
+ * Only the authenticated owner of the entry may edit it.
+ */
 app.put("/api/logs/:id", requireAuth, (req, res) => {
   DB = loadDB();
   const uid  = req.session.userId;
@@ -364,6 +401,11 @@ app.put("/api/logs/:id", requireAuth, (req, res) => {
   res.json({ ok: true, entry: DB.logs[uid][idx] });
 });
 
+/**
+ * DELETE /api/logs/:id
+ * Permanently removes a log entry.
+ * Only the authenticated owner of the entry may delete it.
+ */
 app.delete("/api/logs/:id", requireAuth, (req, res) => {
   DB = loadDB();
   const uid  = req.session.userId;
@@ -380,11 +422,19 @@ app.delete("/api/logs/:id", requireAuth, (req, res) => {
 //  PLEDGES
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * GET /api/pledges
+ * Returns the list of pledged action IDs for the authenticated user.
+ */
 app.get("/api/pledges", requireAuth, (req, res) => {
   DB = loadDB();
   res.json({ pledges: DB.pledges[req.session.userId] || [] });
 });
 
+/**
+ * PUT /api/pledges
+ * Replaces the user's full pledge list. Body: { pledges: string[] }.
+ */
 app.put("/api/pledges", requireAuth, (req, res) => {
   DB = loadDB();
   const pledges = (req.body.pledges || [])
@@ -398,6 +448,11 @@ app.put("/api/pledges", requireAuth, (req, res) => {
 //  STATS
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * GET /api/stats
+ * Returns aggregated statistics for the dashboard: total/today kg,
+ * per-category breakdown, pledge count, and 7-day weekly trend.
+ */
 app.get("/api/stats", requireAuth, (req, res) => {
   DB = loadDB();
   const uid     = req.session.userId;
@@ -433,6 +488,11 @@ app.get("/api/stats", requireAuth, (req, res) => {
 //  HEALTH
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * GET /api/health
+ * Public health-check endpoint. Returns server uptime, version,
+ * and registered user count. Used by hosting providers for liveness probes.
+ */
 app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",

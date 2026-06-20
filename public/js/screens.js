@@ -8,6 +8,10 @@
 let _quizStep    = 0;
 let _quizAnswers = {};
 
+/**
+ * Renders the onboarding carbon footprint quiz screen.
+ * Resets step/answer state and delegates to _renderQuizStep().
+ */
 function renderQuiz() {
   _quizStep    = 0;
   _quizAnswers = {};
@@ -15,6 +19,11 @@ function renderQuiz() {
   _renderQuizStep();
 }
 
+/**
+ * Renders the current quiz question step with options,
+ * progress bar, and next/submit button.
+ * Called internally by renderQuiz() and on each answer selection.
+ */
 function _renderQuizStep() {
   const q    = QUIZ_QUESTIONS[_quizStep];
   const pct  = (_quizStep / QUIZ_QUESTIONS.length) * 100;
@@ -76,6 +85,11 @@ function _renderQuizStep() {
 // ══════════════════════════════════════════
 //  RESULT
 // ══════════════════════════════════════════
+/**
+ * Renders the post-quiz result screen showing the user's
+ * estimated annual footprint, rating, and top recommended action.
+ * @param {number} annual - Estimated annual CO₂ in kg
+ */
 function renderResult(annual) {
   showScreen("result");
   const rating = getRating(annual);
@@ -115,6 +129,11 @@ function renderResult(annual) {
 // ══════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════
+/**
+ * Fetches logs, pledges, and stats in parallel, then renders the
+ * main dashboard: KPI cards, AI tips, footprint gauge, category
+ * breakdown bars, 7-day trend chart, and recent activity table.
+ */
 async function renderDashboard() {
   showScreen("app");
   setActiveNav("dashboard");
@@ -263,6 +282,11 @@ async function renderDashboard() {
 // ══════════════════════════════════════════
 //  LOG ACTIVITY
 // ══════════════════════════════════════════
+/**
+ * Renders the Log Activity screen with a category selector,
+ * activity dropdown, quantity input, live CO₂ estimate, and submit.
+ * Re-renders reactively when category or quantity changes.
+ */
 function renderLog() {
   showScreen("app");
   setActiveNav("log");
@@ -361,6 +385,11 @@ function renderLog() {
 // ══════════════════════════════════════════
 //  HISTORY
 // ══════════════════════════════════════════
+/**
+ * Renders the full activity history table with category filter chips.
+ * Supports edit and delete actions on each entry inline.
+ * @param {string} [filterCat="all"] - Category ID to filter by, or "all"
+ */
 async function renderHistory(filterCat = "all") {
   showScreen("app");
   setActiveNav("history");
@@ -451,6 +480,10 @@ async function renderHistory(filterCat = "all") {
 // ══════════════════════════════════════════
 //  INSIGHTS
 // ══════════════════════════════════════════
+/**
+ * Renders the Insights screen: what-if simulator, pledge action list,
+ * comparison bars against national/global averages, and AI insight box.
+ */
 async function renderInsights() {
   showScreen("app");
   setActiveNav("insights");
@@ -575,6 +608,10 @@ async function renderInsights() {
 // ══════════════════════════════════════════
 //  SETTINGS
 // ══════════════════════════════════════════
+/**
+ * Renders the Settings screen: profile editing, footprint management,
+ * quiz retake option, and sign-out button.
+ */
 function renderSettings() {
   showScreen("app");
   setActiveNav("settings");
@@ -697,6 +734,12 @@ function renderSettings() {
 // ══════════════════════════════════════════
 //  MODALS — Edit & Delete Log, Update Footprint
 // ══════════════════════════════════════════
+/**
+ * Opens a modal pre-populated with the existing entry data
+ * to allow the user to edit item, qty, kg, and note.
+ * @param {string}    logId  - ID of the log entry to edit
+ * @param {Function}  [onDone] - Callback fired after a successful save
+ */
 function openEditLogModal(logId, onDone) {
   const log = AppState.logs?.find(l => l.id === logId);
   if (!log) return;
@@ -723,6 +766,11 @@ function openEditLogModal(logId, onDone) {
   });
 }
 
+/**
+ * Opens a confirmation modal before permanently deleting a log entry.
+ * @param {string}   logId  - ID of the log entry to delete
+ * @param {Function} [onDone] - Callback fired after successful deletion
+ */
 function confirmDeleteLog(logId, onDone) {
   const log = AppState.logs?.find(l => l.id === logId);
   showModal({
@@ -742,6 +790,10 @@ function confirmDeleteLog(logId, onDone) {
   });
 }
 
+/**
+ * Opens a modal that lets the user manually update their annual
+ * CO₂ footprint estimate without retaking the full quiz.
+ */
 function openUpdateFootprintModal() {
   showModal({
     title: "Update footprint estimate",
@@ -765,6 +817,12 @@ function openUpdateFootprintModal() {
 // ══════════════════════════════════════════
 //  CHART — Weekly CO2 Trend (Chart.js)
 // ══════════════════════════════════════════
+/**
+ * Renders (or re-renders) the 7-day CO₂ trend bar chart using Chart.js.
+ * Bars are colour-coded: green for low emissions, amber for medium,
+ * red for high. Destroys any existing chart instance before creating.
+ * @param {Array<{date: string, kg: number}>} weeklyTrend - 7 data points
+ */
 function renderTrendChart(weeklyTrend) {
   const canvas = document.getElementById("trend-chart");
   if (!canvas || typeof Chart === "undefined") return;
@@ -824,6 +882,13 @@ function renderTrendChart(weeklyTrend) {
 // ══════════════════════════════════════════
 //  AI TIPS — Gemini-powered suggestions
 // ══════════════════════════════════════════
+/**
+ * Fetches personalised carbon reduction tips from the Claude API
+ * based on the user's actual usage data, and injects them into
+ * the #ai-tips-box element. Falls back to curated static tips if
+ * the API is unavailable.
+ * @param {object} stats - Dashboard stats object from GET /api/stats
+ */
 async function loadAITips(stats) {
   const el = document.getElementById("ai-tips-box");
   if (!el) return;
